@@ -9,7 +9,8 @@ modelled after the `org.openapis.v3` package in [pkl-pantry](https://github.com/
 - `scripts/validate.sh` – renders the examples and validates them against the schema matching their `arazzo` version
 - `*.pkl` – one module per Arazzo object (`Document`, `Info`, `SourceDescription`, `Workflow`, `Step`, ...)
 - `examples/` – sample documents that double as tests
-- `PklProject` – package metadata (placeholder `baseUri`, update before publishing)
+- `PklProject` – package metadata
+- `.github/workflows/release.yml` and `scripts/publish-metadata.sh` – the release automation, see [Releasing](#releasing)
 
 ## Versioning
 
@@ -71,25 +72,67 @@ Arazzo 1.1.0 is a minor release, but its JSON Schema is not a superset of the 1.
 
 Package metadata is served from GitHub Pages and the package zip from GitHub releases, because Pkl fetches the
 metadata for `package://makecph.github.io/pkl-arazzo/arazzo@<version>` from
-`https://makecph.github.io/pkl-arazzo/arazzo@<version>`.
+`https://makecph.github.io/pkl-arazzo/arazzo@<version>` and then downloads the zip from the `packageZipUrl` in it.
 
-Releases are automated by `.github/workflows/release.yml`. On the branch of the line you are releasing (`1.0` or
-`main`):
+### Release flow
 
-1. Bump `version` in `PklProject` and commit.
-2. Tag the commit `v<version>` and push the tag, for example `git tag v1.1.0-alpha.1 && git push origin v1.1.0-alpha.1`.
+Each package line is released on its own, from its own branch (`1.0` or `main`). Pushing a tag is what starts a
+release; `.github/workflows/release.yml` does the rest.
 
-The workflow checks that the tag matches `PklProject`, runs the tests and `scripts/validate.sh`, builds the package,
-creates the GitHub release (a pre-release when the version has a suffix such as `-alpha.1`) with the zip and
-metadata attached, and publishes the metadata file to the root of the `gh-pages` branch with
-`scripts/publish-metadata.sh`.
+```
+ bump version in PklProject ──▶ commit ──▶ git tag v<version> ──▶ git push origin v<version>
+                                                                             │
+        ┌────────────────────────────────────────────────────────────────────┘
+        ▼
+ release workflow
+   1. check that the tag matches the version in PklProject
+   2. pkl test, then scripts/validate.sh
+   3. pkl project package
+   4. create the GitHub release and attach the zip, the metadata and their checksums
+        (a pre-release when the version has a suffix such as -alpha.1)
+   5. scripts/publish-metadata.sh adds the metadata file to the gh-pages branch
+        │
+        ▼
+ users can import the package
+   amends "package://makecph.github.io/pkl-arazzo/arazzo@<version>#/Document.pkl"
+```
 
-Set up GitHub Pages once in the repository settings, from the `gh-pages` branch root. The branch is created by the
-first release.
+To release, on the branch of the line:
 
-To release by hand, run `pkl project package --skip-publish-check --output-path .out .` (the flag is needed because
-the publish check looks for an already-published zip at `packageZipUrl`, which does not exist yet for a new
-version), attach the zip to a GitHub release for the tag, and run `scripts/publish-metadata.sh <version> .out`.
+1. Make sure everything to release is committed, and that fixes meant for both lines are on both branches (see
+   [Branches and cherry-picking](#branches-and-cherry-picking)).
+2. Bump `version` in `PklProject` and commit.
+3. Tag the commit `v<version>` and push the tag, for example
+   `git tag v1.1.0-alpha.1 && git push origin v1.1.0-alpha.1`.
+4. Watch the run in the repository's Actions tab, then check the release page. A quick check that the package
+   resolves is `pkl eval` on a document that amends the package.
+
+### Version numbers
+
+The first releases of each line are alphas: `1.0.0-alpha.1` on the `1.0` branch and `1.1.0-alpha.1` on `main`.
+Follow with `-alpha.2` and so on, then drop the suffix for the stable release (`1.0.0`, `1.1.0`). After that, a
+library fix is a patch bump (`1.1.1`). A published version is never moved or re-tagged. If something is wrong with
+it, release the next version.
+
+### One-time setup
+
+- Under Settings, Actions, General, give workflows **read and write permissions**, so the workflow can create
+  releases and push to `gh-pages`.
+- Under Settings, Pages, publish from the **`gh-pages` branch, root**. That branch is created by the first release,
+  so enable Pages after it.
+
+### When a release fails
+
+- **The run fails before the release is created** (the tag does not match `PklProject`, or a test fails): fix the
+  problem on the branch, delete the tag (`git tag -d v<version> && git push --delete origin v<version>`), and tag
+  again.
+- **The release exists but the metadata was not published**: run
+  `scripts/publish-metadata.sh <version> <directory with the built package>` by hand, or download the metadata
+  file from the release and add it to the root of `gh-pages`.
+- **Releasing by hand**: run `pkl project package --skip-publish-check --output-path .out .` (the flag is needed
+  because the publish check looks for an already-published zip at `packageZipUrl`, which does not exist yet for a
+  new version), attach the zip to a GitHub release for the tag, and run
+  `scripts/publish-metadata.sh <version> .out`.
 
 ## License
 
