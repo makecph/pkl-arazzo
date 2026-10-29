@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Publishes the package metadata file of a built package to the root of the gh-pages branch, which GitHub Pages
-# serves. Pkl fetches the metadata for package://makecph.github.io/pkl-arazzo/arazzo@<version> from there.
+# Publishes the package metadata file of a built package to the root of the gh-pages branch. Pkl fetches the metadata
+# for package://raw.githubusercontent.com/makecph/pkl-arazzo/gh-pages/arazzo@<version> from there, through
+# https://raw.githubusercontent.com/makecph/pkl-arazzo/gh-pages/arazzo@<version>.
 #
 # Usage: scripts/publish-metadata.sh <version> <package output dir>
 set -euo pipefail
@@ -22,7 +23,6 @@ else
 fi
 
 cp "$metadata" "$pages/"
-touch "$pages/.nojekyll"
 
 cd "$pages"
 git add -A

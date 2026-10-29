@@ -22,7 +22,7 @@ The package version tracks the Arazzo minor version, `<spec major>.<spec minor>.
 | `1.1.x` | 1.1 | `"1.1.0"` (default), on `main` |
 
 ```pkl
-amends "package://makecph.github.io/pkl-arazzo/arazzo@1.1.0#/Document.pkl"
+amends "package://raw.githubusercontent.com/makecph/pkl-arazzo/gh-pages/arazzo@1.1.0#/Document.pkl"
 ```
 
 Spec patch releases only clarify the text and share a schema, so they share a package. Library fixes are patch bumps.
@@ -70,9 +70,12 @@ Arazzo 1.1.0 is a minor release, but its JSON Schema is not a superset of the 1.
 
 ## Releasing
 
-Package metadata is served from GitHub Pages and the package zip from GitHub releases, because Pkl fetches the
-metadata for `package://makecph.github.io/pkl-arazzo/arazzo@<version>` from
-`https://makecph.github.io/pkl-arazzo/arazzo@<version>` and then downloads the zip from the `packageZipUrl` in it.
+Pkl fetches the metadata for `package://raw.githubusercontent.com/makecph/pkl-arazzo/gh-pages/arazzo@<version>`
+from `https://raw.githubusercontent.com/makecph/pkl-arazzo/gh-pages/arazzo@<version>` and then downloads the zip
+from the `packageZipUrl` in it.
+GitHub does not serve metadata at a `github.com` URL, so the metadata files live on the `gh-pages` branch and are read
+through `raw.githubusercontent.com`, while the zip comes from the GitHub release. GitHub Pages is not used. Raw files
+can be cached for a few minutes, so a new version may take that long to resolve after a release.
 
 ### Release flow
 
@@ -94,7 +97,7 @@ release; `.github/workflows/release.yml` does the rest.
         │
         ▼
  users can import the package
-   amends "package://makecph.github.io/pkl-arazzo/arazzo@<version>#/Document.pkl"
+   amends "package://raw.githubusercontent.com/makecph/pkl-arazzo/gh-pages/arazzo@<version>#/Document.pkl"
 ```
 
 To release, on the branch of the line:
@@ -117,9 +120,7 @@ it, release the next version.
 ### One-time setup
 
 - Under Settings, Actions, General, give workflows **read and write permissions**, so the workflow can create
-  releases and push to `gh-pages`.
-- Under Settings, Pages, publish from the **`gh-pages` branch, root**. That branch is created by the first release,
-  so enable Pages after it.
+  releases and push to `gh-pages`. The branch is created by the first release, so do not create it by hand.
 
 ### When a release fails
 

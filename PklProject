@@ -3,7 +3,7 @@ amends "pkl:Project"
 
 package {
   name = "arazzo"
-  baseUri = "package://makecph.github.io/pkl-arazzo/\(name)"
+  baseUri = "package://raw.githubusercontent.com/makecph/pkl-arazzo/gh-pages/\(name)"
   version = "1.1.0-alpha.1"
   packageZipUrl = "https://github.com/makecph/pkl-arazzo/releases/download/v\(version)/\(name)@\(version).zip"
   license = "Apache-2.0"
