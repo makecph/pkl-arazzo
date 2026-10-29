@@ -41,6 +41,25 @@ rejected. The spec text changed in these ways:
 The schema also had an earlier revision (2024-12-16) that required `retryAfter` and a goto target for `retry`
 actions. The current revision applies to every 1.0.x release, so those are not required here.
 
+## Branches and cherry-picking
+
+Each package line lives on its own branch: `1.0` holds the `1.0.x` line and `main` holds the `1.1.x` line. The
+modules are copies of each other that have drifted apart where the specs differ (`Step`, `Criterion`, `Parameter`,
+`Document` and others), so a git merge between the branches is not useful. Move fixes with `git cherry-pick`
+instead:
+
+1. Fix the problem on the branch where you found it, with tests, and check that the fix is valid for the other spec
+   version (compare the two schemas in `schemas/`).
+2. Commit it on its own, so the commit can be picked cleanly.
+3. `git switch` to the other branch and `git cherry-pick <sha>`. Expect conflicts in files that differ between the
+   lines. Resolve them by applying the same intent, not by taking either side whole.
+4. Run the tests and `scripts/validate.sh` on both branches.
+5. Release each line separately by bumping the library revision (the patch part) in `PklProject` and tagging
+   `v<version>` on that branch.
+
+Changes that rely on something only one spec has stay on that branch. Anything that is part of 1.1 only, such as
+`Selector`, is not picked back to `1.0`.
+
 ## License
 
 Copyright 2026 Make Copenhagen ApS. Licensed under the [Apache License 2.0](LICENSE).

@@ -8,6 +8,7 @@ amends "pkl:test"
 
 import "pkl:json"
 import "../Parameter.pkl"
+import "../Reusable.pkl"
 import "../Step.pkl"
 import "../SuccessAction.pkl"
 import "../FailureAction.pkl"
@@ -78,6 +79,30 @@ facts {
       }))
       !rejected(withStep(version, (baseStep) {
         parameters { new Parameter { name = "p"; `in` = "query"; value = "x" } }
+      }))
+    }
+  }
+
+  ["parameters of operation steps need `in`, those of workflow steps do not"] {
+    for (version in versions) {
+      !rejected(withStep(version, (baseStep) {
+        parameters { new Parameter { name = "p"; `in` = "query"; value = "x" } }
+      }))
+      rejected(withStep(version, (baseStep) {
+        parameters { new Parameter { name = "p"; value = "x" } }
+      }))
+      rejected(withStep(version, (baseStep) {
+        operationId = null
+        operationPath = "#/paths/~1ping/get"
+        parameters { new Parameter { name = "p"; value = "x" } }
+      }))
+      !rejected(withStep(version, (baseStep) {
+        parameters { new Reusable { reference = "$components.parameters.p" } }
+      }))
+      !rejected(withStep(version, (baseStep) {
+        operationId = null
+        workflowId = "other"
+        parameters { new Parameter { name = "p"; value = "x" } }
       }))
     }
   }
