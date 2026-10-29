@@ -21,7 +21,7 @@ The package version tracks the Arazzo minor version, `<spec major>.<spec minor>.
 | `1.1.x` | 1.1 | `"1.1.0"` (separate `1.1` release line) |
 
 ```pkl
-amends "package://github.com/makecph/pkl-arazzo/arazzo@1.0.0#/Document.pkl"
+amends "package://makecph.github.io/pkl-arazzo/arazzo@1.0.0#/Document.pkl"
 ```
 
 Spec patch releases only clarify the text and share a schema, so they share a package. Library fixes are patch bumps.
@@ -59,6 +59,24 @@ instead:
 
 Changes that rely on something only one spec has stay on that branch. Anything that is part of 1.1 only, such as
 `Selector`, is not picked back to `1.0`.
+
+## Releasing
+
+Package metadata is served from GitHub Pages and the package zip from GitHub releases, because Pkl fetches the
+metadata for `package://makecph.github.io/pkl-arazzo/arazzo@<version>` from
+`https://makecph.github.io/pkl-arazzo/arazzo@<version>`.
+
+1. On the branch for the line you are releasing (`1.0` or `main`), bump `version` in `PklProject`, commit, and tag
+   `v<version>`.
+2. Build the package: `pkl project package --skip-publish-check --output-path .out .` (this creates the zip, the
+   metadata file `arazzo@<version>` and their `.sha256` files). The flag is needed because the publish check looks for
+   an already-published zip at `packageZipUrl`, which does not exist yet for a new version.
+3. Create a GitHub release for the tag and attach the zip and its `.sha256` file. The zip must end up at the
+   `packageZipUrl` in `PklProject`.
+4. Add the metadata file `arazzo@<version>` to the root of the `gh-pages` branch, which GitHub Pages serves (keep an
+   empty `.nojekyll` file there), and push it.
+
+Enable GitHub Pages once in the repository settings, from the `gh-pages` branch root.
 
 ## License
 
