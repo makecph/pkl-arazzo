@@ -66,17 +66,23 @@ Package metadata is served from GitHub Pages and the package zip from GitHub rel
 metadata for `package://makecph.github.io/pkl-arazzo/arazzo@<version>` from
 `https://makecph.github.io/pkl-arazzo/arazzo@<version>`.
 
-1. On the branch for the line you are releasing (`1.0` or `main`), bump `version` in `PklProject`, commit, and tag
-   `v<version>`.
-2. Build the package: `pkl project package --skip-publish-check --output-path .out .` (this creates the zip, the
-   metadata file `arazzo@<version>` and their `.sha256` files). The flag is needed because the publish check looks for
-   an already-published zip at `packageZipUrl`, which does not exist yet for a new version.
-3. Create a GitHub release for the tag and attach the zip and its `.sha256` file. The zip must end up at the
-   `packageZipUrl` in `PklProject`.
-4. Add the metadata file `arazzo@<version>` to the root of the `gh-pages` branch, which GitHub Pages serves (keep an
-   empty `.nojekyll` file there), and push it.
+Releases are automated by `.github/workflows/release.yml`. On the branch of the line you are releasing (`1.0` or
+`main`):
 
-Enable GitHub Pages once in the repository settings, from the `gh-pages` branch root.
+1. Bump `version` in `PklProject` and commit.
+2. Tag the commit `v<version>` and push the tag, for example `git tag v1.1.0-alpha.1 && git push origin v1.1.0-alpha.1`.
+
+The workflow checks that the tag matches `PklProject`, runs the tests and `scripts/validate.sh`, builds the package,
+creates the GitHub release (a pre-release when the version has a suffix such as `-alpha.1`) with the zip and
+metadata attached, and publishes the metadata file to the root of the `gh-pages` branch with
+`scripts/publish-metadata.sh`.
+
+Set up GitHub Pages once in the repository settings, from the `gh-pages` branch root. The branch is created by the
+first release.
+
+To release by hand, run `pkl project package --skip-publish-check --output-path .out .` (the flag is needed because
+the publish check looks for an already-published zip at `packageZipUrl`, which does not exist yet for a new
+version), attach the zip to a GitHub release for the tag, and run `scripts/publish-metadata.sh <version> .out`.
 
 ## License
 
