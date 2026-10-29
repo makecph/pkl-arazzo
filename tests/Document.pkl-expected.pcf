@@ -1,8 +1,142 @@
 examples {
+  ["async-and-selectors"] {
+    """
+    {
+      "arazzo": "1.1.0",
+      "info": {
+        "title": "Order a pet and wait for the shipping event",
+        "version": "1.0.0"
+      },
+      "sourceDescriptions": [
+        {
+          "name": "orders",
+          "url": "./orders.openapi.yaml",
+          "type": "openapi"
+        },
+        {
+          "name": "events",
+          "url": "./events.asyncapi.yaml",
+          "type": "asyncapi"
+        }
+      ],
+      "workflows": [
+        {
+          "workflowId": "orderAndWaitForShipping",
+          "steps": [
+            {
+              "stepId": "placeOrder",
+              "timeout": 5000,
+              "operationId": "$sourceDescriptions.orders.placeOrder",
+              "requestBody": {
+                "contentType": "application/json",
+                "payload": {
+                  "petId": 1,
+                  "quantity": 1
+                },
+                "replacements": [
+                  {
+                    "target": "/petId",
+                    "targetSelectorType": "jsonpointer",
+                    "value": {
+                      "context": "$inputs",
+                      "selector": "$.petId",
+                      "type": "jsonpath"
+                    }
+                  }
+                ]
+              },
+              "successCriteria": [
+                {
+                  "condition": "$statusCode == 201"
+                }
+              ],
+              "outputs": {
+                "orderId": {
+                  "context": "$response.body",
+                  "selector": "/id",
+                  "type": "jsonpointer"
+                }
+              }
+            },
+            {
+              "stepId": "requestShipping",
+              "dependsOn": [
+                "placeOrder"
+              ],
+              "operationId": "$sourceDescriptions.events.sendShippingRequest",
+              "action": "send",
+              "parameters": [
+                {
+                  "name": "orderId",
+                  "in": "channel",
+                  "value": "$steps.placeOrder.outputs.orderId"
+                }
+              ]
+            },
+            {
+              "stepId": "awaitShipping",
+              "timeout": 60000,
+              "dependsOn": [
+                "requestShipping"
+              ],
+              "channelPath": "{$sourceDescriptions.events.url}#/channels/shipped",
+              "action": "receive",
+              "correlationId": "$steps.placeOrder.outputs.orderId",
+              "successCriteria": [
+                {
+                  "context": "$message.payload",
+                  "condition": "$.status == 'shipped'",
+                  "type": {
+                    "type": "jsonpath",
+                    "version": "rfc9535"
+                  }
+                }
+              ],
+              "onFailure": [
+                {
+                  "name": "runCompensation",
+                  "type": "goto",
+                  "workflowId": "cancelOrder",
+                  "parameters": [
+                    {
+                      "name": "orderId",
+                      "value": "$steps.placeOrder.outputs.orderId"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "outputs": {
+            "orderId": "$steps.placeOrder.outputs.orderId"
+          }
+        },
+        {
+          "workflowId": "cancelOrder",
+          "steps": [
+            {
+              "stepId": "cancel",
+              "operationId": "$sourceDescriptions.orders.cancelOrder",
+              "parameters": [
+                {
+                  "name": "orderId",
+                  "in": "path",
+                  "value": "$inputs.orderId"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+    
+    """
+  }
   ["login-and-retrieve-pets"] {
     """
     {
-      "arazzo": "1.0.1",
+      "arazzo": "1.1.0",
+      "$self": "https://example.com/arazzo/pets.arazzo.yaml",
       "info": {
         "title": "A pet purchasing workflow",
         "summary": "Login, find a pet, and buy it",
@@ -84,8 +218,10 @@ examples {
                 {
                   "context": "$response.body",
                   "condition": "$.status == 'available'",
-                  "type": "jsonpath",
-                  "version": "draft-goessner-dispatch-jsonpath-00"
+                  "type": {
+                    "type": "jsonpath",
+                    "version": "rfc9535"
+                  }
                 }
               ],
               "outputs": {
@@ -102,44 +238,10 @@ examples {
     
     """
   }
-  ["minimal-1.0.0"] {
+  ["minimal-1.1.0"] {
     """
     {
-      "arazzo": "1.0.0",
-      "info": {
-        "title": "Minimal Arazzo document",
-        "version": "1.0.0"
-      },
-      "sourceDescriptions": [
-        {
-          "name": "api",
-          "url": "./openapi.yaml"
-        }
-      ],
-      "workflows": [
-        {
-          "workflowId": "ping",
-          "steps": [
-            {
-              "stepId": "ping",
-              "operationId": "ping",
-              "successCriteria": [
-                {
-                  "condition": "$statusCode == 200"
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-    
-    """
-  }
-  ["minimal-1.0.1"] {
-    """
-    {
-      "arazzo": "1.0.1",
+      "arazzo": "1.1.0",
       "info": {
         "title": "Minimal Arazzo document",
         "version": "1.0.0"

@@ -1,10 +1,12 @@
 /// A single failure action which describes an action to take upon failure of a workflow step.
 ///
-/// <https://spec.openapis.org/arazzo/v1.0.1#failure-action-object>
+/// <https://spec.openapis.org/arazzo/v1.1.0#failure-action-object>
 module arazzo.FailureAction
 
 import "Criterion.pkl"
 import "Extension.pkl"
+import "Parameter.pkl"
+import "Reusable.pkl"
 
 /// The name of the failure action.
 ///
@@ -26,6 +28,11 @@ workflowId: String?
 ///
 /// This field is only relevant when `type` is `goto` or `retry`. It is mutually exclusive with `workflowId`.
 stepId: String?
+
+/// A list of parameters that MUST be passed to a workflow as referenced by `workflowId`.
+///
+/// Only allowed together with `workflowId`.
+parameters: Listing<Parameter | Reusable>(workflowId != null)?
 
 /// A non-negative decimal indicating the seconds to delay after the step failure before another attempt SHALL
 /// be made.

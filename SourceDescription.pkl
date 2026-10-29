@@ -1,7 +1,7 @@
 /// Describes a source description (such as an OpenAPI description) that will be referenced by one or more
 /// workflows described within an Arazzo description.
 ///
-/// <https://spec.openapis.org/arazzo/v1.0.1#source-description-object>
+/// <https://spec.openapis.org/arazzo/v1.1.0#source-description-object>
 module arazzo.SourceDescription
 
 import "Extension.pkl"
@@ -18,7 +18,7 @@ name: String(matches(Regex(#"[A-Za-z0-9_\-]+"#)))
 url: Uri
 
 /// The type of source description.
-type: ("arazzo" | "openapi")?
+type: ("arazzo" | "openapi" | "asyncapi")?
 
 /// Custom properties starting with x- extend Arazzo with additional information
 /// or functionality.

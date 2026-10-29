@@ -1,18 +1,23 @@
 /// Describes a location within a payload (e.g., a request body) and a value to set within the location.
 ///
-/// <https://spec.openapis.org/arazzo/v1.0.1#payload-replacement-object>
+/// <https://spec.openapis.org/arazzo/v1.1.0#payload-replacement-object>
 module arazzo.PayloadReplacement
 
 import "Extension.pkl"
+import "Selector.pkl"
 
-/// A JSON Pointer or XPath Expression which MUST be resolved against the request body.
+/// A JSONPath, JSON Pointer or XPath expression which MUST be resolved against the request body.
 target: String
 
-/// The value set within the target location.
+/// The selector expression type to use for `target`.
 ///
-/// The value can be a constant or a Runtime Expression to be evaluated and passed to the referenced operation
-/// or workflow.
-value: String
+/// If omitted, defaults to JSON Pointer for `application/json` or XPath for XML-based media types.
+targetSelectorType: Selector.Type?
+
+/// The value to set at the location defined by `target`.
+///
+/// May be a literal, a runtime expression string, or a [Selector].
+value: String | Selector
 
 /// Custom properties starting with x- extend Arazzo with additional information
 /// or functionality.

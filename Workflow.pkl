@@ -1,12 +1,13 @@
 /// Describes the steps to be taken across one or more APIs to achieve an objective.
 ///
-/// <https://spec.openapis.org/arazzo/v1.0.1#workflow-object>
+/// <https://spec.openapis.org/arazzo/v1.1.0#workflow-object>
 module arazzo.Workflow
 
 import "Extension.pkl"
 import "FailureAction.pkl"
 import "Parameter.pkl"
 import "Reusable.pkl"
+import "Selector.pkl"
 import "Step.pkl"
 import "SuccessAction.pkl"
 
@@ -41,8 +42,8 @@ failureActions: Listing<FailureAction | Reusable>?
 
 /// A map between a friendly name and a dynamic output value.
 ///
-/// Values are runtime expressions, for example `$steps.login.outputs.token`.
-outputs: Mapping<Step.OutputKey, String>?
+/// Values are runtime expressions, for example `$steps.login.outputs.token`, or a [Selector].
+outputs: Mapping<Step.OutputKey, String | Selector>?
 
 /// A list of parameters that are applicable for all steps described under this workflow.
 parameters: Listing<Parameter | Reusable>?

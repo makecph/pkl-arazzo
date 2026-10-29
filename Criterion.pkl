@@ -1,9 +1,10 @@
 /// An object used to specify the context, conditions, and condition types that can be used to prove or satisfy
 /// assertions specified in a Step's `successCriteria`, and in a Success or Failure Action's `criteria`.
 ///
-/// <https://spec.openapis.org/arazzo/v1.0.1#criterion-object>
+/// <https://spec.openapis.org/arazzo/v1.1.0#criterion-object>
 module arazzo.Criterion
 
+import "ExpressionType.pkl"
 import "Extension.pkl"
 
 /// A runtime expression used to set the context for the condition to be applied on.
@@ -19,18 +20,8 @@ condition: String
 
 /// The type of condition to be applied. Defaults to `simple` when omitted.
 ///
-/// The Arazzo 1.0 JSON Schema only accepts the type as a plain string, with the expression version in the
-/// sibling [version] property, so that is what this module emits.
-type: ("simple" | "regex" | "jsonpath" | "xpath")(context != null)?
-
-/// A shorthand string representing the version of the expression type being used.
-///
-/// Only applicable when `type` is `jsonpath` or `xpath`. The allowed value for JSONPath is
-/// `draft-goessner-dispatch-jsonpath-00`. The allowed values for XPath are `xpath-10`, `xpath-20` and `xpath-30`.
-version: ("draft-goessner-dispatch-jsonpath-00" | "xpath-10" | "xpath-20" | "xpath-30")(
-  if (type == "jsonpath") this == "draft-goessner-dispatch-jsonpath-00"
-  else type == "xpath" && this != "draft-goessner-dispatch-jsonpath-00"
-)?
+/// Either one of the named types, or an [ExpressionType] when a specific expression version is needed.
+type: ("simple" | "regex" | "jsonpath" | "xpath" | ExpressionType)(context != null)?
 
 /// Custom properties starting with x- extend Arazzo with additional information
 /// or functionality.

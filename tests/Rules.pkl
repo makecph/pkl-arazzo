@@ -1,0 +1,327 @@
+/// Tests for the validation rules of Arazzo 1.1, in particular the ones that are new compared to 1.0.
+///
+/// Every `rejected(...)` case has a counterpart that must be accepted, so a rule cannot pass by rejecting
+/// everything. The examples in `examples/` are separately validated against the published JSON Schema.
+module arazzo.tests.Rules
+
+amends "pkl:test"
+
+import "../Criterion.pkl"
+import "../ExpressionType.pkl"
+import "../FailureAction.pkl"
+import "../Parameter.pkl"
+import "../PayloadReplacement.pkl"
+import "../RequestBody.pkl"
+import "../Reusable.pkl"
+import "../Selector.pkl"
+import "../SourceDescription.pkl"
+import "../Step.pkl"
+import "../SuccessAction.pkl"
+import "../Workflow.pkl"
+import "../examples/minimal-1.1.0.pkl" as minimal
+
+/// An OpenAPI step.
+local baseStep: Step = new {
+  stepId = "ping"
+  operationId = "ping"
+  successCriteria {
+    new { condition = "$statusCode == 200" }
+  }
+}
+
+local function withStep(step: Step): Module =
+  (minimal) {
+    workflows {
+      [0] {
+        steps {
+          [0] = step
+        }
+      }
+    }
+  }
+
+local function withSteps(first: Step, second: Step): Module =
+  (minimal) {
+    workflows {
+      [0] {
+        steps {
+          [0] = first
+          [1] = second
+        }
+      }
+    }
+  }
+
+/// `true` if rendering the document fails.
+local function rejected(doc: Module): Boolean = module.catchOrNull(() -> doc.output.text) != null
+
+local function selectorDoc(selector: Selector): Module = withStep((baseStep) { outputs { ["o"] = selector } })
+
+local function bodyDoc(replacement: PayloadReplacement): Module =
+  withStep((baseStep) { requestBody { replacements { replacement } } })
+
+local jsonpath = new ExpressionType { type = "jsonpath"; version = "rfc9535" }
+
+facts {
+  ["$self must not contain a fragment"] {
+    !rejected((minimal) { `$self` = "https://example.com/a.arazzo.yaml" })
+    !rejected((minimal) { `$self` = "../a.arazzo.yaml" })
+    rejected((minimal) { `$self` = "https://example.com/a.arazzo.yaml#frag" })
+  }
+
+  ["source descriptions can be of type asyncapi"] {
+    for (kind in List("arazzo", "openapi", "asyncapi")) {
+      !rejected((minimal) { sourceDescriptions { [0] { `type` = kind } } })
+    }
+    rejected((minimal) { sourceDescriptions { [0] { `type` = "grpc" } } })
+  }
+
+  ["an OpenAPI step needs exactly one of operationId and operationPath"] {
+    !rejected(withStep(baseStep))
+    !rejected(withStep((baseStep) { operationId = null; operationPath = "#/paths/~1ping/get" }))
+    rejected(withStep((baseStep) { operationPath = "#/paths/~1ping/get" }))
+    rejected(withStep((baseStep) { operationId = null }))
+  }
+
+  ["a workflow step excludes operation fields"] {
+    !rejected(withStep((baseStep) { operationId = null; workflowId = "other" }))
+    rejected(withStep((baseStep) { workflowId = "other" }))
+    rejected(withStep((baseStep) { operationId = null; workflowId = "other"; channelPath = "x"; action = "send" }))
+    // a workflow step cannot have an action
+    rejected(withStep((baseStep) { operationId = null; workflowId = "other"; action = "send" }))
+  }
+
+  ["an AsyncAPI step needs an action and operationId or channelPath"] {
+    !rejected(withStep((baseStep) { action = "send" }))
+    !rejected(withStep((baseStep) { action = "receive" }))
+    !rejected(withStep((baseStep) { operationId = null; channelPath = "#/channels/c"; action = "send" }))
+    // channelPath without an action
+    rejected(withStep((baseStep) { operationId = null; channelPath = "#/channels/c" }))
+    // both operationId and channelPath
+    rejected(withStep((baseStep) { channelPath = "#/channels/c"; action = "send" }))
+    // operationPath is OpenAPI only
+    rejected(withStep((baseStep) { operationId = null; operationPath = "#/paths/~1ping/get"; action = "send" }))
+    rejected(withStep((baseStep) { action = "publish" }))
+  }
+
+  ["correlationId is only for receive steps"] {
+    !rejected(withStep((baseStep) { action = "receive"; correlationId = "$steps.a.outputs.id" }))
+    !rejected(withStep((baseStep) { action = "receive"; correlationId = 42 }))
+    rejected(withStep((baseStep) { action = "send"; correlationId = "x" }))
+    rejected(withStep((baseStep) { correlationId = "x" }))
+  }
+
+  ["timeout is an integer"] {
+    !rejected(withStep((baseStep) { timeout = 5000 }))
+    rejected(withStep((baseStep) { timeout = 1.5 }))
+    rejected(withStep((baseStep) { timeout = "5s" }))
+  }
+
+  ["step dependsOn takes step references"] {
+    !rejected(withStep((baseStep) { dependsOn { "other" } }))
+    !rejected(withStep((baseStep) { dependsOn { "$workflows.w.steps.s" } }))
+    !rejected(withStep((baseStep) { dependsOn { "$sourceDescriptions.d.w.steps.s" } }))
+    rejected(withStep((baseStep) { dependsOn { "$workflows.w" } }))
+    rejected(withStep((baseStep) { dependsOn { "$steps.s" } }))
+    rejected(withStep((baseStep) { dependsOn { "a"; "a" } }))
+    rejected(withStep((baseStep) { dependsOn {} }))
+  }
+
+  ["parameters of operation steps need `in`, those of workflow steps must not need it"] {
+    !rejected(withStep((baseStep) {
+      parameters { new Parameter { name = "p"; `in` = "query"; value = "x" } }
+    }))
+    rejected(withStep((baseStep) {
+      parameters { new Parameter { name = "p"; value = "x" } }
+    }))
+    rejected(withStep((baseStep) {
+      action = "send"
+      parameters { new Parameter { name = "p"; value = "x" } }
+    }))
+    !rejected(withStep((baseStep) {
+      parameters { new Reusable { reference = "$components.parameters.p" } }
+    }))
+    !rejected(withStep((baseStep) {
+      operationId = null
+      workflowId = "other"
+      parameters { new Parameter { name = "p"; value = "x" } }
+    }))
+  }
+
+  ["parameter locations include querystring and channel but not body"] {
+    for (location in List("path", "query", "querystring", "header", "cookie", "channel")) {
+      !rejected(withStep((baseStep) {
+        parameters { new Parameter { name = "p"; `in` = location; value = "x" } }
+      }))
+    }
+    rejected(withStep((baseStep) {
+      parameters { new Parameter { name = "p"; `in` = "body"; value = "x" } }
+    }))
+  }
+
+  ["a parameter value is a scalar, a list or a selector, but not an object"] {
+    !rejected(withStep((baseStep) {
+      parameters {
+        new Parameter { name = "a"; `in` = "query"; value = 1 }
+        new Parameter { name = "b"; `in` = "query"; value = true }
+        new Parameter { name = "c"; `in` = "query"; value = null }
+        new Parameter { name = "d"; `in` = "query"; value = new Listing { "x"; "y" } }
+        new Parameter {
+          name = "e"
+          `in` = "query"
+          value = new Selector { context = "$response.body"; selector = "/id"; type = "jsonpointer" }
+        }
+      }
+    }))
+    rejected(withStep((baseStep) {
+      parameters { new Parameter { name = "p"; `in` = "query"; value = new Dynamic { a = 1 } } }
+    }))
+  }
+
+  ["a criterion type is a named type or an expression type"] {
+    // The nested form is valid in 1.1. In 1.0 only a flat type and version were valid.
+    !rejected(withStep((baseStep) {
+      successCriteria { new { context = "$response.body"; condition = "$.a"; type = jsonpath } }
+    }))
+    !rejected(withStep((baseStep) {
+      successCriteria { new { context = "$response.body"; condition = "$.a"; type = "jsonpath" } }
+    }))
+    // jsonpointer is an expression type, but not a named criterion type
+    rejected(withStep((baseStep) {
+      successCriteria { new { context = "$response.body"; condition = "/a"; type = "jsonpointer" } }
+    }))
+    // `version` is no longer a property of a criterion
+    rejected(withStep((baseStep) {
+      successCriteria { new { context = "$response.body"; condition = "$.a"; type = "jsonpath"; version = "rfc9535" } }
+    }))
+    // context is required when type is
+    rejected(withStep((baseStep) {
+      successCriteria { new { condition = "$.a"; type = jsonpath } }
+    }))
+  }
+
+  ["an expression type's version must match its type"] {
+    for (pair in List(
+      List("jsonpath", "rfc9535"),
+      List("jsonpath", "draft-goessner-dispatch-jsonpath-00"),
+      List("xpath", "xpath-10"),
+      List("xpath", "xpath-20"),
+      List("xpath", "xpath-30"),
+      List("xpath", "xpath-31"),
+      List("jsonpointer", "rfc6901")
+    )) {
+      !rejected(withStep((baseStep) {
+        successCriteria { new { context = "$response.body"; condition = "x"; type = new ExpressionType { type = pair[0]; version = pair[1] } } }
+      }))
+    }
+    for (pair in List(
+      List("jsonpath", "xpath-30"),
+      List("jsonpath", "rfc6901"),
+      List("xpath", "rfc9535"),
+      List("xpath", "xpath-40"),
+      List("jsonpointer", "rfc9535"),
+      List("jsonpointer", "")
+    )) {
+      rejected(withStep((baseStep) {
+        successCriteria { new { context = "$response.body"; condition = "x"; type = new ExpressionType { type = pair[0]; version = pair[1] } } }
+      }))
+    }
+  }
+
+  ["a selector has a context, a selector and a type"] {
+    !rejected(selectorDoc(new Selector { context = "$response.body"; selector = "/id"; type = "jsonpointer" }))
+    !rejected(selectorDoc(new Selector { context = "$response.body"; selector = "$.id"; type = jsonpath }))
+    rejected(selectorDoc(new Selector { context = "$response.body"; selector = "/id"; type = "css" }))
+    rejected(selectorDoc(new Selector { selector = "/id"; type = "jsonpointer" }))
+    rejected(selectorDoc(new Selector { context = "$response.body"; type = "jsonpointer" }))
+    rejected(selectorDoc(new Selector { context = "$response.body"; selector = "/id" }))
+  }
+
+  ["outputs can be runtime expressions or selectors, on steps and workflows"] {
+    !rejected(withStep((baseStep) { outputs { ["a"] = "$response.body" } }))
+    !rejected(withStep((baseStep) {
+      outputs { ["a"] = new Selector { context = "$response.body"; selector = "/id"; type = "jsonpointer" } }
+    }))
+    rejected(withStep((baseStep) { outputs { ["not allowed!"] = "$response.body" } }))
+    !rejected((minimal) {
+      workflows {
+        [0] {
+          outputs { ["a"] = new Selector { context = "$outputs"; selector = "/id"; type = "jsonpointer" } }
+        }
+      }
+    })
+    rejected((minimal) { workflows { [0] { outputs { ["a"] = 1 } } } })
+  }
+
+  ["payload replacements can name a selector type and take a selector value"] {
+    !rejected(bodyDoc(new PayloadReplacement { target = "/a"; value = "x" }))
+    !rejected(bodyDoc(new PayloadReplacement { target = "/a"; targetSelectorType = "jsonpointer"; value = "x" }))
+    !rejected(bodyDoc(new PayloadReplacement { target = "$.a"; targetSelectorType = jsonpath; value = "x" }))
+    !rejected(bodyDoc(new PayloadReplacement {
+      target = "/a"
+      value = new Selector { context = "$inputs"; selector = "$.a"; type = "jsonpath" }
+    }))
+    rejected(bodyDoc(new PayloadReplacement { target = "/a"; targetSelectorType = "css"; value = "x" }))
+    rejected(bodyDoc(new PayloadReplacement { target = "/a"; value = 1 }))
+  }
+
+  ["actions can pass parameters to the workflow they go to"] {
+    !rejected(withStep((baseStep) {
+      onSuccess {
+        new SuccessAction {
+          name = "n"
+          type = "goto"
+          workflowId = "other"
+          parameters { new Parameter { name = "p"; value = "x" } }
+        }
+      }
+    }))
+    !rejected(withStep((baseStep) {
+      onFailure {
+        new FailureAction {
+          name = "n"
+          type = "goto"
+          workflowId = "other"
+          parameters { new Parameter { name = "p"; value = "x" } }
+        }
+      }
+    }))
+    // parameters need a workflowId, so a goto to a step cannot have them
+    rejected(withStep((baseStep) {
+      onSuccess {
+        new SuccessAction {
+          name = "n"
+          type = "goto"
+          stepId = "ping"
+          parameters { new Parameter { name = "p"; value = "x" } }
+        }
+      }
+    }))
+    rejected(withStep((baseStep) {
+      onFailure {
+        new FailureAction {
+          name = "n"
+          type = "goto"
+          stepId = "ping"
+          parameters { new Parameter { name = "p"; value = "x" } }
+        }
+      }
+    }))
+  }
+
+  ["goto actions need exactly one of workflowId and stepId"] {
+    rejected(withStep((baseStep) { onSuccess { new SuccessAction { name = "n"; type = "goto" } } }))
+    rejected(withStep((baseStep) {
+      onSuccess { new SuccessAction { name = "n"; type = "goto"; stepId = "a"; workflowId = "b" } }
+    }))
+    !rejected(withStep((baseStep) { onSuccess { new SuccessAction { name = "n"; type = "goto"; stepId = "ping" } } }))
+    rejected(withStep((baseStep) { onFailure { new FailureAction { name = "n"; type = "goto" } } }))
+  }
+
+  ["retry actions need no retryAfter or target"] {
+    !rejected(withStep((baseStep) { onFailure { new FailureAction { name = "n"; type = "retry" } } }))
+    rejected(withStep((baseStep) {
+      onFailure { new FailureAction { name = "n"; type = "retry"; retryAfter = -1 } }
+    }))
+  }
+}

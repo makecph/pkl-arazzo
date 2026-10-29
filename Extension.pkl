@@ -6,11 +6,13 @@ module arazzo.Extension
 
 import "Components.pkl"
 import "Criterion.pkl"
+import "ExpressionType.pkl"
 import "FailureAction.pkl"
 import "Info.pkl"
 import "Parameter.pkl"
 import "PayloadReplacement.pkl"
 import "RequestBody.pkl"
+import "Selector.pkl"
 import "SourceDescription.pkl"
 import "Step.pkl"
 import "SuccessAction.pkl"
@@ -24,11 +26,13 @@ hidden converters: Mapping<Class | String, (unknown) -> Any> = new {
     it.toMap().filter((_, v) -> v != null) + (it.getProperty("extensions") ?? Map()).toMap()
   [Components.getClass()] = extractExtensions
   [Criterion.getClass()] = extractExtensions
+  [ExpressionType.getClass()] = extractExtensions
   [FailureAction.getClass()] = extractExtensions
   [Info.getClass()] = extractExtensions
   [Parameter.getClass()] = extractExtensions
   [PayloadReplacement.getClass()] = extractExtensions
   [RequestBody.getClass()] = extractExtensions
+  [Selector.getClass()] = extractExtensions
   [SourceDescription.getClass()] = extractExtensions
   [Step.getClass()] = extractExtensions
   [SuccessAction.getClass()] = extractExtensions

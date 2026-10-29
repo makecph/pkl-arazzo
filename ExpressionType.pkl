@@ -1,0 +1,27 @@
+/// An object used to describe the type and version of an expression used within a Criterion object or a
+/// Selector object.
+///
+/// <https://spec.openapis.org/arazzo/v1.1.0#expression-type-object>
+module arazzo.ExpressionType
+
+import "Extension.pkl"
+
+/// The type of expression to be applied.
+type: "jsonpath" | "xpath" | "jsonpointer"
+
+/// A shorthand string representing the version of the expression type being used.
+///
+/// The allowed values for JSONPath are `rfc9535` and `draft-goessner-dispatch-jsonpath-00`. The allowed values for
+/// XPath are `xpath-10`, `xpath-20`, `xpath-30` and `xpath-31`. The only allowed value for JSON Pointer is
+/// `rfc6901`.
+///
+/// The spec text says the version can be omitted, but the 1.1 JSON Schema requires it, so this module does too.
+version: String(
+  if (type == "jsonpath") this == "rfc9535" || this == "draft-goessner-dispatch-jsonpath-00"
+  else if (type == "xpath") List("xpath-10", "xpath-20", "xpath-30", "xpath-31").contains(this)
+  else this == "rfc6901"
+)
+
+/// Custom properties starting with x- extend Arazzo with additional information
+/// or functionality.
+hidden extensions: Mapping<Extension.Key, Any>?

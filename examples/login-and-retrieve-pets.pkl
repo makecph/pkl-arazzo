@@ -1,5 +1,7 @@
 amends "../Document.pkl"
 
+`$self` = "https://example.com/arazzo/pets.arazzo.yaml"
+
 info {
   title = "A pet purchasing workflow"
   summary = "Login, find a pet, and buy it"
@@ -65,8 +67,10 @@ workflows {
           new {
             context = "$response.body"
             condition = "$.status == 'available'"
-            type = "jsonpath"
-            version = "draft-goessner-dispatch-jsonpath-00"
+            type = new ExpressionType {
+              type = "jsonpath"
+              version = "rfc9535"
+            }
           }
         }
         outputs {

@@ -1,7 +1,13 @@
-/// Describes a single workflow step which MAY be a call to an API operation (OpenAPI Operation object) or
-/// to another Workflow object.
+/// Describes a single workflow step which MAY be a call to an API operation (an OpenAPI or AsyncAPI Operation
+/// object) or to another Workflow object.
 ///
-/// <https://spec.openapis.org/arazzo/v1.0.1#step-object>
+/// There are three kinds of step, told apart by which fields are set:
+///
+/// - An OpenAPI step sets `operationId` or `operationPath`.
+/// - An AsyncAPI step sets `action`, and `operationId` or `channelPath`. `correlationId` is only for `receive`.
+/// - A workflow step sets `workflowId`.
+///
+/// <https://spec.openapis.org/arazzo/v1.1.0#step-object>
 module arazzo.Step
 
 import "Criterion.pkl"
@@ -10,10 +16,18 @@ import "FailureAction.pkl"
 import "Parameter.pkl"
 import "RequestBody.pkl"
 import "Reusable.pkl"
+import "Selector.pkl"
 import "SuccessAction.pkl"
 
 /// A key for an entry in `outputs`.
 typealias OutputKey = String(matches(Regex(#"[a-zA-Z0-9\.\-_]+"#)))
+
+/// A reference to a step: a `stepId` in the current workflow, `$workflows.<workflowId>.steps.<stepId>` for a step in
+/// another workflow of the same document, or `$sourceDescriptions.<name>.<workflowId>.steps.<stepId>` for a step in
+/// another Arazzo document.
+typealias StepReference = String(
+  matches(Regex(#"(?!\$).+|\$workflows\.[^.]+\.steps\.[^.]+|\$sourceDescriptions\.[^.]+\.[^.]+\.steps\.[^.]+"#))
+)
 
 /// Unique string to represent the step.
 ///
@@ -26,28 +40,54 @@ stepId: String
 @SourceCode { language = "Markdown" }
 description: String?
 
+/// The duration in milliseconds to wait before timing out the step.
+timeout: Int?
+
+/// A list of steps that must complete (or be waited for) before this step can begin execution.
+///
+/// This only establishes a prerequisite relationship and does not trigger execution of the referenced steps. The
+/// referenced steps SHOULD be non-blocking/async steps.
+dependsOn: Listing<StepReference>(!isEmpty, isDistinct)?
+
 /// The name of an existing, resolvable operation, as defined with a unique `operationId` and existing within one
 /// of the source descriptions.
 ///
-/// Exactly one of `operationId`, `operationPath` and `workflowId` MUST be specified.
-operationId: String?(List(this, operationPath, workflowId).filterNonNull().length == 1)
+/// Exactly one of `operationId`, `operationPath`, `channelPath` and `workflowId` MUST be specified.
+operationId: String?(List(this, operationPath, channelPath, workflowId).filterNonNull().length == 1)
 
 /// A reference to a source combined with a JSON Pointer to reference an operation, for example
 /// `{$sourceDescriptions.petstore.url}#/paths/~1pet~1findByStatus/get`.
 ///
-/// Exactly one of `operationId`, `operationPath` and `workflowId` MUST be specified.
+/// Not allowed on AsyncAPI steps, which set `action` (enforced by `action`).
 operationPath: String?
 
-/// The `workflowId` referencing an existing workflow within the Arazzo description.
+/// A reference to a source combined with a JSON Pointer to reference an async channel.
 ///
-/// Exactly one of `operationId`, `operationPath` and `workflowId` MUST be specified.
+/// Only for AsyncAPI steps, so `action` MUST be specified.
+channelPath: String?(this == null || action != null)
+
+/// The `workflowId` referencing an existing workflow within the Arazzo description.
 workflowId: String?
 
-/// A list of parameters that MUST be passed to an operation or workflow as referenced by `operationId`,
-/// `operationPath`, or `workflowId`.
-parameters: Listing<Parameter | Reusable>?
+/// The intended operation on the async channel: whether the step sends data to the channel or receives data from it.
+///
+/// REQUIRED for AsyncAPI steps and not allowed otherwise.
+action: ("send" | "receive")(operationPath == null && workflowId == null)?
 
-/// The request body to pass to an operation as referenced by `operationId` or `operationPath`.
+/// An ID to correlate async responses with their requests.
+///
+/// Only for AsyncAPI `receive` steps.
+correlationId: (String | Number | Boolean | Dynamic | Listing)(action == "receive")?
+
+/// A list of parameters that MUST be passed to an operation or workflow as referenced by `operationId`,
+/// `operationPath`, `channelPath` or `workflowId`.
+///
+/// For operation steps every [Parameter] MUST specify `in`.
+parameters: Listing<Parameter | Reusable>(
+  workflowId != null || every((it) -> it is Reusable || (it as Parameter).`in` != null)
+)?
+
+/// The request body to pass to an operation as referenced by `operationId`, `operationPath` or `channelPath`.
 requestBody: RequestBody?
 
 /// A list of assertions to determine the success of the step.
@@ -61,8 +101,8 @@ onSuccess: Listing<SuccessAction | Reusable>?
 /// An array of failure action objects that specify what to do upon step failure.
 onFailure: Listing<FailureAction | Reusable>?
 
-/// A map between a friendly name and a dynamic output value defined using a runtime expression.
-outputs: Mapping<OutputKey, String>?
+/// A map between a friendly name and a dynamic output value defined using a runtime expression or a [Selector].
+outputs: Mapping<OutputKey, String | Selector>?
 
 /// Custom properties starting with x- extend Arazzo with additional information
 /// or functionality.

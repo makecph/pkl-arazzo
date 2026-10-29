@@ -4,7 +4,7 @@
 /// are explicitly referenced from properties outside the components object, using a [Reusable] object or
 /// a `$ref` in an `inputs` schema.
 ///
-/// <https://spec.openapis.org/arazzo/v1.0.1#components-object>
+/// <https://spec.openapis.org/arazzo/v1.1.0#components-object>
 module arazzo.Components
 
 import "Extension.pkl"

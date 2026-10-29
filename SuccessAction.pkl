@@ -1,10 +1,12 @@
 /// A single success action which describes an action to take upon success of a workflow step.
 ///
-/// <https://spec.openapis.org/arazzo/v1.0.1#success-action-object>
+/// <https://spec.openapis.org/arazzo/v1.1.0#success-action-object>
 module arazzo.SuccessAction
 
 import "Criterion.pkl"
 import "Extension.pkl"
+import "Parameter.pkl"
+import "Reusable.pkl"
 
 /// The name of the success action.
 ///
@@ -26,6 +28,11 @@ workflowId: String?
 ///
 /// This field is only relevant when `type` is `goto`. It is mutually exclusive with `workflowId`.
 stepId: String?
+
+/// A list of parameters that MUST be passed to a workflow as referenced by `workflowId`.
+///
+/// Only allowed together with `workflowId`.
+parameters: Listing<Parameter | Reusable>(workflowId != null)?
 
 /// A list of assertions to determine if this action SHALL be executed.
 ///

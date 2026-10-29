@@ -1,0 +1,115 @@
+amends "../Document.pkl"
+
+info {
+  title = "Order a pet and wait for the shipping event"
+  version = "1.0.0"
+}
+
+sourceDescriptions {
+  new {
+    name = "orders"
+    url = "./orders.openapi.yaml"
+    type = "openapi"
+  }
+  new {
+    name = "events"
+    url = "./events.asyncapi.yaml"
+    type = "asyncapi"
+  }
+}
+
+workflows {
+  new {
+    workflowId = "orderAndWaitForShipping"
+    steps {
+      // An OpenAPI step. Its output is picked out of the response with a selector.
+      new {
+        stepId = "placeOrder"
+        operationId = "$sourceDescriptions.orders.placeOrder"
+        timeout = 5000
+        requestBody {
+          contentType = "application/json"
+          payload {
+            petId = 1
+            quantity = 1
+          }
+          replacements {
+            new {
+              target = "/petId"
+              targetSelectorType = "jsonpointer"
+              value = new Selector {
+                context = "$inputs"
+                selector = "$.petId"
+                type = "jsonpath"
+              }
+            }
+          }
+        }
+        successCriteria {
+          new { condition = "$statusCode == 201" }
+        }
+        outputs {
+          ["orderId"] = new Selector {
+            context = "$response.body"
+            selector = "/id"
+            type = "jsonpointer"
+          }
+        }
+      }
+      // An AsyncAPI step that sends a message on a channel.
+      new {
+        stepId = "requestShipping"
+        operationId = "$sourceDescriptions.events.sendShippingRequest"
+        action = "send"
+        dependsOn { "placeOrder" }
+        parameters {
+          new Parameter { name = "orderId"; `in` = "channel"; value = "$steps.placeOrder.outputs.orderId" }
+        }
+      }
+      // An AsyncAPI step that waits for the matching reply, correlated by the order id.
+      new {
+        stepId = "awaitShipping"
+        channelPath = "{$sourceDescriptions.events.url}#/channels/shipped"
+        action = "receive"
+        correlationId = "$steps.placeOrder.outputs.orderId"
+        timeout = 60000
+        dependsOn { "requestShipping" }
+        successCriteria {
+          new {
+            context = "$message.payload"
+            condition = "$.status == 'shipped'"
+            type = new ExpressionType {
+              type = "jsonpath"
+              version = "rfc9535"
+            }
+          }
+        }
+        onFailure {
+          new FailureAction {
+            name = "runCompensation"
+            type = "goto"
+            workflowId = "cancelOrder"
+            parameters {
+              new Parameter { name = "orderId"; value = "$steps.placeOrder.outputs.orderId" }
+            }
+          }
+        }
+      }
+    }
+    outputs {
+      ["orderId"] = "$steps.placeOrder.outputs.orderId"
+    }
+  }
+  new {
+    workflowId = "cancelOrder"
+    steps {
+      new {
+        stepId = "cancel"
+        operationId = "$sourceDescriptions.orders.cancelOrder"
+        parameters {
+          new Parameter { name = "orderId"; `in` = "path"; value = "$inputs.orderId" }
+        }
+      }
+    }
+  }
+}

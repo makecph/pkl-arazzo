@@ -2,7 +2,7 @@
 ///
 /// The metadata MAY be used by tooling as required.
 ///
-/// <https://spec.openapis.org/arazzo/v1.0.1#info-object>
+/// <https://spec.openapis.org/arazzo/v1.1.0#info-object>
 module arazzo.Info
 
 import "Extension.pkl"

@@ -1,8 +1,8 @@
 /// The root of an [Arazzo](https://www.openapis.org/arazzo-specification) description.
 ///
-/// This module follows version 1.0.x of the Arazzo Specification.
+/// This module follows version 1.1.x of the Arazzo Specification.
 ///
-/// <https://spec.openapis.org/arazzo/v1.0.1#arazzo-description>
+/// <https://spec.openapis.org/arazzo/v1.1.0#arazzo-description>
 open module arazzo.Document
 
 import "Components.pkl"
@@ -10,17 +10,24 @@ import "Extension.pkl"
 import "Info.pkl"
 import "SourceDescription.pkl"
 import "Workflow.pkl"
+import "ExpressionType.pkl" as _ExpressionType
 import "FailureAction.pkl" as _FailureAction
 import "Parameter.pkl" as _Parameter
 import "Reusable.pkl" as _Reusable
+import "Selector.pkl" as _Selector
 import "SuccessAction.pkl" as _SuccessAction
 
 /// This string MUST be the version number of the Arazzo Specification that the Arazzo description uses.
 ///
 /// The `arazzo` field SHOULD be used by tooling to interpret the Arazzo description. This package tracks the
-/// Arazzo minor version: package versions `1.0.x` implement Arazzo 1.0, and accept the 1.0.0 and 1.0.1 patch
-/// releases, which share the same schema. Use a `1.1.x` package version for Arazzo 1.1.
-arazzo: "1.0.0" | "1.0.1" = "1.0.1"
+/// Arazzo minor version: package versions `1.1.x` implement Arazzo 1.1 (the 1.1.0 patch release). Use a `1.0.x`
+/// package version for Arazzo 1.0.
+arazzo: "1.1.0" = "1.1.0"
+
+/// A URI-reference that identifies this document, used as the base for resolving relative references.
+///
+/// MUST NOT contain a fragment.
+`$self`: Uri(!contains("#"))?
 
 /// Provides metadata about the Arazzo description.
 info: Info
@@ -38,9 +45,11 @@ workflows: Listing<Workflow>(!isEmpty, isDistinct)
 components: Components?
 
 // re-export types so they are available without import
+typealias ExpressionType = _ExpressionType
 typealias FailureAction = _FailureAction
 typealias Parameter = _Parameter
 typealias Reusable = _Reusable
+typealias Selector = _Selector
 typealias SuccessAction = _SuccessAction
 
 output {

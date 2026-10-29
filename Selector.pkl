@@ -1,0 +1,25 @@
+/// An object which enables fine-grained traversal and precise data selection from structured data.
+///
+/// <https://spec.openapis.org/arazzo/v1.1.0#selector-object>
+module arazzo.Selector
+
+import "ExpressionType.pkl"
+import "Extension.pkl"
+
+/// A selector expression type: one of the named types, or an [ExpressionType] when a specific version is needed.
+typealias Type = "jsonpointer" | "jsonpath" | "xpath" | ExpressionType
+
+/// A valid runtime expression which MUST evaluate to structured data (e.g. `$response.body`), and sets the
+/// context for the selector to be applied on.
+context: String
+
+/// A selector expression (e.g. `$.items[0].id`, `/Envelope/Item`) in the form of a JSONPath expression,
+/// XPath expression or JSON Pointer expression.
+selector: String
+
+/// The selector expression type to use.
+type: Type
+
+/// Custom properties starting with x- extend Arazzo with additional information
+/// or functionality.
+hidden extensions: Mapping<Extension.Key, Any>?

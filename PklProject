@@ -1,10 +1,10 @@
-/// Modules for describing [Arazzo](https://www.openapis.org/arazzo-specification) v1.0 workflow documents
+/// Modules for describing [Arazzo](https://www.openapis.org/arazzo-specification) v1.1 workflow documents
 amends "pkl:Project"
 
 package {
   name = "arazzo"
   baseUri = "package://github.com/makecph/pkl-arazzo/\(name)"
-  version = "1.0.0-alpha.1"
+  version = "1.1.0-alpha.1"
   packageZipUrl = "https://github.com/makecph/pkl-arazzo/releases/download/v\(version)/\(name)@\(version).zip"
   license = "Apache-2.0"
   authors { "oss@makecph.com" }
