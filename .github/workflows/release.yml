@@ -1,0 +1,66 @@
+name: Release
+
+# Push a tag `v<version>` on the branch of the line you are releasing (`1.0` or `main`) to publish that version.
+# The version in PklProject must match the tag. Versions with a pre-release suffix, like 1.1.0-alpha.1, are
+# published as GitHub pre-releases.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+# Both package lines publish to the same gh-pages branch, so never run two at once.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Install pkl and ajv-cli
+        run: |
+          sudo curl -fsSL -o /usr/local/bin/pkl https://github.com/apple/pkl/releases/latest/download/pkl-linux-amd64
+          sudo chmod +x /usr/local/bin/pkl
+          npm install -g ajv-cli@5 ajv-formats@3
+          pkl --version
+
+      - name: Check that the tag matches PklProject
+        run: |
+          version="$(pkl eval -x package.version PklProject)"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match the PklProject version v$version" >&2
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Test
+        run: |
+          pkl test tests/*.pkl
+          scripts/validate.sh
+
+      - name: Package
+        run: pkl project package --skip-publish-check --output-path .out .
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease=""
+          case "$VERSION" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" $prerelease --title "arazzo $VERSION" --generate-notes \
+            ".out/arazzo@$VERSION.zip" ".out/arazzo@$VERSION.zip.sha256" \
+            ".out/arazzo@$VERSION" ".out/arazzo@$VERSION.sha256"
+
+      - name: Publish metadata to GitHub Pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          scripts/publish-metadata.sh "$VERSION" .out
