@@ -1,0 +1,144 @@
+/// Tests for the two Arazzo spec versions this package line supports, 1.0.0 and 1.0.1.
+///
+/// Both versions share one JSON Schema, and the spec text changes between them are editorial or not
+/// expressible in the data model, so a document differs only in its `arazzo` field. These facts pin that down.
+module arazzo.tests.Versions
+
+amends "pkl:test"
+
+import "pkl:json"
+import "../Parameter.pkl"
+import "../Step.pkl"
+import "../SuccessAction.pkl"
+import "../FailureAction.pkl"
+import "../examples/login-and-retrieve-pets.pkl" as withoutExplicitVersion
+import "../examples/minimal-1.0.0.pkl" as v100
+import "../examples/minimal-1.0.1.pkl" as v101
+
+local versions = List("1.0.0", "1.0.1")
+
+local parser = new json.Parser {}
+
+local function parse(doc: Module): Dynamic = parser.parse(doc.output.text)
+
+/// The step of the minimal documents.
+local baseStep: Step = new {
+  stepId = "ping"
+  operationId = "ping"
+  successCriteria {
+    new { condition = "$statusCode == 200" }
+  }
+}
+
+/// The minimal 1.0.1 document, rendered as `version`, with its only step replaced by `step`.
+local function withStep(version: String, step: Step): Module =
+  (v101) {
+    arazzo = version
+    workflows {
+      [0] {
+        steps {
+          [0] = step
+        }
+      }
+    }
+  }
+
+/// `true` if rendering the document fails.
+local function rejected(doc: Module): Boolean = module.catchOrNull(() -> doc.output.text) != null
+
+facts {
+  ["each version declares its own arazzo field"] {
+    parse(v100).arazzo == "1.0.0"
+    parse(v101).arazzo == "1.0.1"
+  }
+
+  ["arazzo defaults to 1.0.1 when unset"] {
+    parse(withoutExplicitVersion).arazzo == "1.0.1"
+  }
+
+  ["1.0.0 and 1.0.1 documents differ only in the arazzo field"] {
+    parse(v100).toMap().remove("arazzo") == parse(v101).toMap().remove("arazzo")
+  }
+
+  ["versions outside 1.0.0 and 1.0.1 are rejected"] {
+    for (unsupported in List("1.1.0", "1.0.2", "1.0", "1.0.1-rc.1", "2.0.0", "")) {
+      rejected((v101) { arazzo = unsupported })
+    }
+  }
+
+  // Behaviour that is identical in 1.0.0 and 1.0.1. Where the 1.0.0 text differs, the published JSON Schema is
+  // followed because it applies to every 1.0.x patch release.
+
+  ["parameter location `body` is rejected in both versions"] {
+    // The 1.0.0 text listed `body` as a possible value of `in`. 1.0.1 removed it. The 1.0 JSON Schema never
+    // accepted it, so neither does this package.
+    for (version in versions) {
+      rejected(withStep(version, (baseStep) {
+        parameters { new Parameter { name = "p"; `in` = "body"; value = "x" } }
+      }))
+      !rejected(withStep(version, (baseStep) {
+        parameters { new Parameter { name = "p"; `in` = "query"; value = "x" } }
+      }))
+    }
+  }
+
+  ["a step needs exactly one of operationId, operationPath and workflowId"] {
+    for (version in versions) {
+      !rejected(withStep(version, baseStep))
+      rejected(withStep(version, (baseStep) { operationId = null }))
+      rejected(withStep(version, (baseStep) { operationPath = "#/paths/~1ping/get" }))
+      !rejected(withStep(version, (baseStep) { operationId = null; workflowId = "other" }))
+    }
+  }
+
+  ["goto actions need exactly one of workflowId and stepId"] {
+    for (version in versions) {
+      rejected(withStep(version, (baseStep) {
+        onSuccess { new SuccessAction { name = "n"; type = "goto" } }
+      }))
+      rejected(withStep(version, (baseStep) {
+        onSuccess { new SuccessAction { name = "n"; type = "goto"; stepId = "a"; workflowId = "b" } }
+      }))
+      !rejected(withStep(version, (baseStep) {
+        onSuccess { new SuccessAction { name = "n"; type = "goto"; stepId = "ping" } }
+      }))
+      rejected(withStep(version, (baseStep) {
+        onFailure { new FailureAction { name = "n"; type = "goto" } }
+      }))
+    }
+  }
+
+  ["retry actions need no retryAfter or target"] {
+    // The earlier 2024-12-16 revision of the 1.0 schema required `retryAfter` and a goto target for retry.
+    // The current 2025-10-15 revision, which covers all 1.0.x releases, does not.
+    for (version in versions) {
+      !rejected(withStep(version, (baseStep) {
+        onFailure { new FailureAction { name = "n"; type = "retry" } }
+      }))
+      rejected(withStep(version, (baseStep) {
+        onFailure { new FailureAction { name = "n"; type = "retry"; retryAfter = -1 } }
+      }))
+    }
+  }
+
+  ["criterion type needs a context, and version must match the type"] {
+    for (version in versions) {
+      rejected(withStep(version, (baseStep) {
+        successCriteria { new { condition = "x"; type = "regex" } }
+      }))
+      !rejected(withStep(version, (baseStep) {
+        successCriteria { new { context = "$response.body"; condition = "x"; type = "regex" } }
+      }))
+      !rejected(withStep(version, (baseStep) {
+        successCriteria {
+          new { context = "$response.body"; condition = "x"; type = "xpath"; version = "xpath-30" }
+        }
+      }))
+      rejected(withStep(version, (baseStep) {
+        successCriteria {
+          new { context = "$response.body"; condition = "x"; type = "xpath"; version = "draft-goessner-dispatch-jsonpath-00" }
+        }
+      }))
+    }
+  }
+}

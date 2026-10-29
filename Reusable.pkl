@@ -1,0 +1,13 @@
+/// A simple object to allow referencing of objects contained within the Components object, with the
+/// ability to override the `value` of a referenced Parameter.
+///
+/// <https://spec.openapis.org/arazzo/v1.0.1#reusable-object>
+module arazzo.Reusable
+
+/// A runtime expression used to reference the desired object, for example `$components.parameters.page`.
+reference: String
+
+/// Sets a value of the referenced parameter.
+///
+/// This is only allowed when `reference` points at a Parameter Object.
+value: Any?

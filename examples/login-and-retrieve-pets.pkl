@@ -1,0 +1,81 @@
+amends "../Document.pkl"
+
+info {
+  title = "A pet purchasing workflow"
+  summary = "Login, find a pet, and buy it"
+  version = "1.0.0"
+  extensions {
+    ["x-owner"] = "pets-team"
+  }
+}
+
+sourceDescriptions {
+  new {
+    name = "petStoreDescription"
+    url = "https://petstore3.swagger.io/api/v3/openapi.json"
+    type = "openapi"
+  }
+}
+
+workflows {
+  new {
+    workflowId = "loginUserRetrievePet"
+    summary = "Login User and then retrieve pets"
+    inputs {
+      type = "object"
+      properties {
+        username { type = "string" }
+        password { type = "string" }
+      }
+    }
+    steps {
+      new {
+        stepId = "loginStep"
+        operationId = "loginUser"
+        parameters {
+          new Parameter { name = "username"; `in` = "query"; value = "$inputs.username" }
+          new Parameter { name = "password"; `in` = "query"; value = "$inputs.password" }
+        }
+        successCriteria {
+          new { condition = "$statusCode == 200" }
+        }
+        outputs {
+          ["tokenExpires"] = "$response.header.X-Expires-After"
+          ["rateLimit"] = "$response.header.X-Rate-Limit"
+        }
+        onFailure {
+          new FailureAction {
+            name = "retryOnRateLimit"
+            type = "retry"
+            retryAfter = 2
+            retryLimit = 3
+            criteria {
+              new { condition = "$statusCode == 429" }
+            }
+          }
+        }
+      }
+      new {
+        stepId = "getPetStep"
+        operationId = "getPetById"
+        parameters {
+          new Parameter { name = "petId"; `in` = "path"; value = "$inputs.petId" }
+        }
+        successCriteria {
+          new {
+            context = "$response.body"
+            condition = "$.status == 'available'"
+            type = "jsonpath"
+            version = "draft-goessner-dispatch-jsonpath-00"
+          }
+        }
+        outputs {
+          ["pet"] = "$response.body"
+        }
+      }
+    }
+    outputs {
+      ["available"] = "$steps.getPetStep.outputs.pet"
+    }
+  }
+}

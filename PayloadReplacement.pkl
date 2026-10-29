@@ -1,0 +1,19 @@
+/// Describes a location within a payload (e.g., a request body) and a value to set within the location.
+///
+/// <https://spec.openapis.org/arazzo/v1.0.1#payload-replacement-object>
+module arazzo.PayloadReplacement
+
+import "Extension.pkl"
+
+/// A JSON Pointer or XPath Expression which MUST be resolved against the request body.
+target: String
+
+/// The value set within the target location.
+///
+/// The value can be a constant or a Runtime Expression to be evaluated and passed to the referenced operation
+/// or workflow.
+value: String
+
+/// Custom properties starting with x- extend Arazzo with additional information
+/// or functionality.
+hidden extensions: Mapping<Extension.Key, Any>?

@@ -1,0 +1,37 @@
+/// A single success action which describes an action to take upon success of a workflow step.
+///
+/// <https://spec.openapis.org/arazzo/v1.0.1#success-action-object>
+module arazzo.SuccessAction
+
+import "Criterion.pkl"
+import "Extension.pkl"
+
+/// The name of the success action.
+///
+/// Names are case sensitive.
+name: String
+
+/// The type of action to take.
+///
+/// `goto` requires exactly one of `workflowId` or `stepId`.
+type: ("end" | "goto")(this != "goto" || (workflowId != null) != (stepId != null))
+
+/// The `workflowId` referencing an existing workflow within the Arazzo description to transfer to upon
+/// success of the step.
+///
+/// This field is only relevant when `type` is `goto`. It is mutually exclusive with `stepId`.
+workflowId: String?
+
+/// The `stepId` to transfer to upon success of the step.
+///
+/// This field is only relevant when `type` is `goto`. It is mutually exclusive with `workflowId`.
+stepId: String?
+
+/// A list of assertions to determine if this action SHALL be executed.
+///
+/// Each assertion is a Criterion object. All criteria MUST be satisfied for the action to be executed.
+criteria: Listing<Criterion>(!isEmpty)?
+
+/// Custom properties starting with x- extend Arazzo with additional information
+/// or functionality.
+hidden extensions: Mapping<Extension.Key, Any>?

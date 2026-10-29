@@ -1,0 +1,25 @@
+/// Describes a source description (such as an OpenAPI description) that will be referenced by one or more
+/// workflows described within an Arazzo description.
+///
+/// <https://spec.openapis.org/arazzo/v1.0.1#source-description-object>
+module arazzo.SourceDescription
+
+import "Extension.pkl"
+
+/// A unique name for the source description.
+///
+/// Names are used to reference the source description in runtime expressions, for example
+/// `$sourceDescriptions.<name>.<operationId>`.
+name: String(matches(Regex(#"[A-Za-z0-9_\-]+"#)))
+
+/// A URL to a source description to be used by a workflow.
+///
+/// If a relative reference is used, it MUST be in the format of a URI-reference.
+url: Uri
+
+/// The type of source description.
+type: ("arazzo" | "openapi")?
+
+/// Custom properties starting with x- extend Arazzo with additional information
+/// or functionality.
+hidden extensions: Mapping<Extension.Key, Any>?

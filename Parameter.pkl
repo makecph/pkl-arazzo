@@ -1,0 +1,29 @@
+/// Describes a single step parameter.
+///
+/// A unique parameter is defined by the combination of a `name` and `in` fields.
+///
+/// <https://spec.openapis.org/arazzo/v1.0.1#parameter-object>
+module arazzo.Parameter
+
+import "Extension.pkl"
+
+/// The name of the parameter.
+///
+/// Parameter names are case sensitive.
+name: String
+
+/// The named location of the parameter.
+///
+/// REQUIRED when the step specifies an `operationId` or `operationPath`. It MUST NOT be used when the step
+/// specifies a `workflowId`.
+`in`: ("path" | "query" | "header" | "cookie")?
+
+/// The value to pass in the parameter.
+///
+/// The value can be a constant or a runtime expression to be evaluated and passed to the referenced operation
+/// or workflow.
+value: Any
+
+/// Custom properties starting with x- extend Arazzo with additional information
+/// or functionality.
+hidden extensions: Mapping<Extension.Key, Any>?

@@ -1,0 +1,52 @@
+/// Describes the steps to be taken across one or more APIs to achieve an objective.
+///
+/// <https://spec.openapis.org/arazzo/v1.0.1#workflow-object>
+module arazzo.Workflow
+
+import "Extension.pkl"
+import "FailureAction.pkl"
+import "Parameter.pkl"
+import "Reusable.pkl"
+import "Step.pkl"
+import "SuccessAction.pkl"
+
+/// Unique string to represent the workflow.
+///
+/// The `workflowId` MUST be unique amongst all workflows described in the Arazzo description.
+workflowId: String
+
+/// A summary of the purpose or objective of the workflow.
+summary: String?
+
+/// A description of the workflow.
+///
+/// CommonMark syntax MAY be used for rich text representation.
+@SourceCode { language = "Markdown" }
+description: String?
+
+/// A JSON Schema 2020-12 object representing the input parameters used by this workflow.
+inputs: Dynamic?
+
+/// A list of workflows (by `workflowId`) that MUST be completed before this workflow can be processed.
+dependsOn: Listing<String>(isDistinct)?
+
+/// An ordered list of steps where each step represents a call to an API operation or to another workflow.
+steps: Listing<Step>(!isEmpty, isDistinct)
+
+/// A list of success actions that are applicable for all steps described under this workflow.
+successActions: Listing<SuccessAction | Reusable>?
+
+/// A list of failure actions that are applicable for all steps described under this workflow.
+failureActions: Listing<FailureAction | Reusable>?
+
+/// A map between a friendly name and a dynamic output value.
+///
+/// Values are runtime expressions, for example `$steps.login.outputs.token`.
+outputs: Mapping<Step.OutputKey, String>?
+
+/// A list of parameters that are applicable for all steps described under this workflow.
+parameters: Listing<Parameter | Reusable>?
+
+/// Custom properties starting with x- extend Arazzo with additional information
+/// or functionality.
+hidden extensions: Mapping<Extension.Key, Any>?

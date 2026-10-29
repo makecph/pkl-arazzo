@@ -1,0 +1,30 @@
+/// Provides metadata about the Arazzo description.
+///
+/// The metadata MAY be used by tooling as required.
+///
+/// <https://spec.openapis.org/arazzo/v1.0.1#info-object>
+module arazzo.Info
+
+import "Extension.pkl"
+
+/// A human readable title of the Arazzo description.
+title: String
+
+/// A short summary of the Arazzo description.
+summary: String?
+
+/// A description of the purpose of the workflows defined.
+///
+/// CommonMark syntax MAY be used for rich text representation.
+@SourceCode { language = "Markdown" }
+description: String?
+
+/// The version identifier of the Arazzo document (which is distinct from the Arazzo Specification version).
+version: String
+
+/// Custom properties starting with x- extend Arazzo with additional information
+/// or functionality.
+///
+/// This is a child property because Pkl modules cannot express both known names
+/// and arbitrary names.
+hidden extensions: Mapping<Extension.Key, Any>?

@@ -1,0 +1,69 @@
+/// Describes a single workflow step which MAY be a call to an API operation (OpenAPI Operation object) or
+/// to another Workflow object.
+///
+/// <https://spec.openapis.org/arazzo/v1.0.1#step-object>
+module arazzo.Step
+
+import "Criterion.pkl"
+import "Extension.pkl"
+import "FailureAction.pkl"
+import "Parameter.pkl"
+import "RequestBody.pkl"
+import "Reusable.pkl"
+import "SuccessAction.pkl"
+
+/// A key for an entry in `outputs`.
+typealias OutputKey = String(matches(Regex(#"[a-zA-Z0-9\.\-_]+"#)))
+
+/// Unique string to represent the step.
+///
+/// The `stepId` MUST be unique amongst all steps described in the workflow.
+stepId: String
+
+/// A description of the step.
+///
+/// CommonMark syntax MAY be used for rich text representation.
+@SourceCode { language = "Markdown" }
+description: String?
+
+/// The name of an existing, resolvable operation, as defined with a unique `operationId` and existing within one
+/// of the source descriptions.
+///
+/// Exactly one of `operationId`, `operationPath` and `workflowId` MUST be specified.
+operationId: String?(List(this, operationPath, workflowId).filterNonNull().length == 1)
+
+/// A reference to a source combined with a JSON Pointer to reference an operation, for example
+/// `{$sourceDescriptions.petstore.url}#/paths/~1pet~1findByStatus/get`.
+///
+/// Exactly one of `operationId`, `operationPath` and `workflowId` MUST be specified.
+operationPath: String?
+
+/// The `workflowId` referencing an existing workflow within the Arazzo description.
+///
+/// Exactly one of `operationId`, `operationPath` and `workflowId` MUST be specified.
+workflowId: String?
+
+/// A list of parameters that MUST be passed to an operation or workflow as referenced by `operationId`,
+/// `operationPath`, or `workflowId`.
+parameters: Listing<Parameter | Reusable>?
+
+/// The request body to pass to an operation as referenced by `operationId` or `operationPath`.
+requestBody: RequestBody?
+
+/// A list of assertions to determine the success of the step.
+///
+/// Each assertion is a Criterion object. All assertions MUST be satisfied for the step to be deemed successful.
+successCriteria: Listing<Criterion>(!isEmpty)?
+
+/// An array of success action objects that specify what to do upon step success.
+onSuccess: Listing<SuccessAction | Reusable>?
+
+/// An array of failure action objects that specify what to do upon step failure.
+onFailure: Listing<FailureAction | Reusable>?
+
+/// A map between a friendly name and a dynamic output value defined using a runtime expression.
+outputs: Mapping<OutputKey, String>?
+
+/// Custom properties starting with x- extend Arazzo with additional information
+/// or functionality.
+hidden extensions: Mapping<Extension.Key, Any>?

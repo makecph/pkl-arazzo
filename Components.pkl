@@ -1,0 +1,32 @@
+/// Holds a set of reusable objects for different aspects of the Arazzo Specification.
+///
+/// All objects defined within the components object will have no effect on the Arazzo description unless they
+/// are explicitly referenced from properties outside the components object, using a [Reusable] object or
+/// a `$ref` in an `inputs` schema.
+///
+/// <https://spec.openapis.org/arazzo/v1.0.1#components-object>
+module arazzo.Components
+
+import "Extension.pkl"
+import "FailureAction.pkl"
+import "Parameter.pkl"
+import "SuccessAction.pkl"
+
+/// A key for an entry in one of the component mappings.
+typealias Name = String(matches(Regex(#"[a-zA-Z0-9\.\-_]+"#)))
+
+/// Reusable JSON Schema 2020-12 schemas to be referenced from workflow inputs.
+inputs: Mapping<Name, Dynamic>?
+
+/// Reusable Parameter objects.
+parameters: Mapping<Name, Parameter>?
+
+/// Reusable Success Action objects.
+successActions: Mapping<Name, SuccessAction>?
+
+/// Reusable Failure Action objects.
+failureActions: Mapping<Name, FailureAction>?
+
+/// Custom properties starting with x- extend Arazzo with additional information
+/// or functionality.
+hidden extensions: Mapping<Extension.Key, Any>?

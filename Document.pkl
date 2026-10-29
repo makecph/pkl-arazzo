@@ -1,0 +1,58 @@
+/// The root of an [Arazzo](https://www.openapis.org/arazzo-specification) description.
+///
+/// This module follows version 1.0.x of the Arazzo Specification.
+///
+/// <https://spec.openapis.org/arazzo/v1.0.1#arazzo-description>
+open module arazzo.Document
+
+import "Components.pkl"
+import "Extension.pkl"
+import "Info.pkl"
+import "SourceDescription.pkl"
+import "Workflow.pkl"
+import "FailureAction.pkl" as _FailureAction
+import "Parameter.pkl" as _Parameter
+import "Reusable.pkl" as _Reusable
+import "SuccessAction.pkl" as _SuccessAction
+
+/// This string MUST be the version number of the Arazzo Specification that the Arazzo description uses.
+///
+/// The `arazzo` field SHOULD be used by tooling to interpret the Arazzo description. This package tracks the
+/// Arazzo minor version: package versions `1.0.x` implement Arazzo 1.0, and accept the 1.0.0 and 1.0.1 patch
+/// releases, which share the same schema. Use a `1.1.x` package version for Arazzo 1.1.
+arazzo: "1.0.0" | "1.0.1" = "1.0.1"
+
+/// Provides metadata about the Arazzo description.
+info: Info
+
+/// A list of source descriptions (such as OpenAPI descriptions or other Arazzo descriptions) that the
+/// workflows reference.
+sourceDescriptions: Listing<SourceDescription>(!isEmpty, isDistinct)
+
+/// A list of workflows.
+///
+/// Each `workflowId` MUST be unique within the document.
+workflows: Listing<Workflow>(!isEmpty, isDistinct)
+
+/// An element to hold various reusable objects for the Arazzo description.
+components: Components?
+
+// re-export types so they are available without import
+typealias FailureAction = _FailureAction
+typealias Parameter = _Parameter
+typealias Reusable = _Reusable
+typealias SuccessAction = _SuccessAction
+
+output {
+  // noinspection TypeMismatch
+  local const format: "json" | "yaml" = read?("prop:pkl.outputFormat") ?? "json"
+
+  local const renderers: Mapping<String, ValueRenderer> = new {
+    ["json"] = new JsonRenderer {}
+    ["yaml"] = new YamlRenderer {}
+  }
+
+  renderer = (renderers[format]) {
+    converters = Extension.converters
+  }
+}

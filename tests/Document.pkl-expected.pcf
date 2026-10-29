@@ -1,0 +1,173 @@
+examples {
+  ["login-and-retrieve-pets"] {
+    """
+    {
+      "arazzo": "1.0.1",
+      "info": {
+        "title": "A pet purchasing workflow",
+        "summary": "Login, find a pet, and buy it",
+        "version": "1.0.0",
+        "x-owner": "pets-team"
+      },
+      "sourceDescriptions": [
+        {
+          "name": "petStoreDescription",
+          "url": "https://petstore3.swagger.io/api/v3/openapi.json",
+          "type": "openapi"
+        }
+      ],
+      "workflows": [
+        {
+          "workflowId": "loginUserRetrievePet",
+          "summary": "Login User and then retrieve pets",
+          "inputs": {
+            "type": "object",
+            "properties": {
+              "username": {
+                "type": "string"
+              },
+              "password": {
+                "type": "string"
+              }
+            }
+          },
+          "steps": [
+            {
+              "stepId": "loginStep",
+              "operationId": "loginUser",
+              "parameters": [
+                {
+                  "name": "username",
+                  "in": "query",
+                  "value": "$inputs.username"
+                },
+                {
+                  "name": "password",
+                  "in": "query",
+                  "value": "$inputs.password"
+                }
+              ],
+              "successCriteria": [
+                {
+                  "condition": "$statusCode == 200"
+                }
+              ],
+              "onFailure": [
+                {
+                  "name": "retryOnRateLimit",
+                  "type": "retry",
+                  "retryAfter": 2,
+                  "retryLimit": 3,
+                  "criteria": [
+                    {
+                      "condition": "$statusCode == 429"
+                    }
+                  ]
+                }
+              ],
+              "outputs": {
+                "tokenExpires": "$response.header.X-Expires-After",
+                "rateLimit": "$response.header.X-Rate-Limit"
+              }
+            },
+            {
+              "stepId": "getPetStep",
+              "operationId": "getPetById",
+              "parameters": [
+                {
+                  "name": "petId",
+                  "in": "path",
+                  "value": "$inputs.petId"
+                }
+              ],
+              "successCriteria": [
+                {
+                  "context": "$response.body",
+                  "condition": "$.status == 'available'",
+                  "type": "jsonpath",
+                  "version": "draft-goessner-dispatch-jsonpath-00"
+                }
+              ],
+              "outputs": {
+                "pet": "$response.body"
+              }
+            }
+          ],
+          "outputs": {
+            "available": "$steps.getPetStep.outputs.pet"
+          }
+        }
+      ]
+    }
+    
+    """
+  }
+  ["minimal-1.0.0"] {
+    """
+    {
+      "arazzo": "1.0.0",
+      "info": {
+        "title": "Minimal Arazzo document",
+        "version": "1.0.0"
+      },
+      "sourceDescriptions": [
+        {
+          "name": "api",
+          "url": "./openapi.yaml"
+        }
+      ],
+      "workflows": [
+        {
+          "workflowId": "ping",
+          "steps": [
+            {
+              "stepId": "ping",
+              "operationId": "ping",
+              "successCriteria": [
+                {
+                  "condition": "$statusCode == 200"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+    
+    """
+  }
+  ["minimal-1.0.1"] {
+    """
+    {
+      "arazzo": "1.0.1",
+      "info": {
+        "title": "Minimal Arazzo document",
+        "version": "1.0.0"
+      },
+      "sourceDescriptions": [
+        {
+          "name": "api",
+          "url": "./openapi.yaml"
+        }
+      ],
+      "workflows": [
+        {
+          "workflowId": "ping",
+          "steps": [
+            {
+              "stepId": "ping",
+              "operationId": "ping",
+              "successCriteria": [
+                {
+                  "condition": "$statusCode == 200"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+    
+    """
+  }
+}

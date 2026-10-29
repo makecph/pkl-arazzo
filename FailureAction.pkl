@@ -1,0 +1,49 @@
+/// A single failure action which describes an action to take upon failure of a workflow step.
+///
+/// <https://spec.openapis.org/arazzo/v1.0.1#failure-action-object>
+module arazzo.FailureAction
+
+import "Criterion.pkl"
+import "Extension.pkl"
+
+/// The name of the failure action.
+///
+/// Names are case sensitive.
+name: String
+
+/// The type of action to take.
+///
+/// `goto` requires exactly one of `workflowId` or `stepId`.
+type: ("end" | "goto" | "retry")(this != "goto" || (workflowId != null) != (stepId != null))
+
+/// The `workflowId` referencing an existing workflow within the Arazzo description to transfer to upon
+/// failure of the step.
+///
+/// This field is only relevant when `type` is `goto` or `retry`. It is mutually exclusive with `stepId`.
+workflowId: String?
+
+/// The `stepId` to transfer to upon failure of the step.
+///
+/// This field is only relevant when `type` is `goto` or `retry`. It is mutually exclusive with `workflowId`.
+stepId: String?
+
+/// A non-negative decimal indicating the seconds to delay after the step failure before another attempt SHALL
+/// be made.
+///
+/// This field is only relevant when `type` is `retry`.
+retryAfter: Number(isPositive)?
+
+/// A non-negative integer indicating how many attempts to retry the step MAY be attempted before failing the
+/// overall step.
+///
+/// This field is only relevant when `type` is `retry`.
+retryLimit: UInt?
+
+/// A list of assertions to determine if this action SHALL be executed.
+///
+/// Each assertion is a Criterion object. All criteria MUST be satisfied for the action to be executed.
+criteria: Listing<Criterion>?
+
+/// Custom properties starting with x- extend Arazzo with additional information
+/// or functionality.
+hidden extensions: Mapping<Extension.Key, Any>?

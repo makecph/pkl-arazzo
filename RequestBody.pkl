@@ -1,0 +1,25 @@
+/// The request body to pass to an operation as referenced by `operationId` or `operationPath`.
+///
+/// <https://spec.openapis.org/arazzo/v1.0.1#request-body-object>
+module arazzo.RequestBody
+
+import "Extension.pkl"
+import "PayloadReplacement.pkl"
+
+/// The Content-Type for the request content.
+///
+/// If omitted then refer to the Content-Type specified at the targeted operation to determine the
+/// serialization of the payload.
+contentType: String?
+
+/// A value representing the request body payload.
+///
+/// The payload can be a literal value or contain runtime expressions.
+payload: Any?
+
+/// A list of locations and values to set within a payload.
+replacements: Listing<PayloadReplacement>?
+
+/// Custom properties starting with x- extend Arazzo with additional information
+/// or functionality.
+hidden extensions: Mapping<Extension.Key, Any>?

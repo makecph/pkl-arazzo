@@ -1,0 +1,36 @@
+/// The Extension object represents the possibility of adding additional data
+/// to extend the specification at certain points.
+///
+/// <https://spec.openapis.org/arazzo/v1.0.1#specification-extensions>
+module arazzo.Extension
+
+import "Components.pkl"
+import "Criterion.pkl"
+import "FailureAction.pkl"
+import "Info.pkl"
+import "Parameter.pkl"
+import "PayloadReplacement.pkl"
+import "RequestBody.pkl"
+import "SourceDescription.pkl"
+import "Step.pkl"
+import "SuccessAction.pkl"
+import "Workflow.pkl"
+
+/// A string representing the key of an extension.
+typealias Key = String(startsWith("x-"), length > 2)
+
+hidden converters: Mapping<Class | String, (unknown) -> Any> = new {
+  local extractExtensions = (it: Module) ->
+    it.toMap().filter((_, v) -> v != null) + (it.getProperty("extensions") ?? Map()).toMap()
+  [Components.getClass()] = extractExtensions
+  [Criterion.getClass()] = extractExtensions
+  [FailureAction.getClass()] = extractExtensions
+  [Info.getClass()] = extractExtensions
+  [Parameter.getClass()] = extractExtensions
+  [PayloadReplacement.getClass()] = extractExtensions
+  [RequestBody.getClass()] = extractExtensions
+  [SourceDescription.getClass()] = extractExtensions
+  [Step.getClass()] = extractExtensions
+  [SuccessAction.getClass()] = extractExtensions
+  [Workflow.getClass()] = extractExtensions
+}
