@@ -1,0 +1,93 @@
+/// Tests for `Rfc3986.UriReference`, the type of fields where Arazzo allows a URI-reference.
+///
+/// Every rejected case has a counterpart that must be accepted, so the type cannot pass by rejecting everything.
+module arazzo.tests.UriReference
+
+amends "pkl:test"
+
+import "pkl:json"
+import "../Rfc3986.pkl"
+import "../examples/minimal-1.1.0.pkl" as minimal
+
+local function check(value: Rfc3986.UriReference): String = value
+
+/// `true` if `value` is not a URI-reference.
+local function invalid(value: String): Boolean = module.catchOrNull(() -> check(value)) != null
+
+local function withUrl(value: String): Module = (minimal) { sourceDescriptions { [0] { url = value } } }
+
+local function rejected(doc: Module): Boolean = module.catchOrNull(() -> doc.output.text) != null
+
+local parser = new json.Parser {}
+
+facts {
+  ["relative references are accepted"] {
+    for (value in List(
+      "./openapi.yaml",
+      "../specs/petstore.yaml",
+      "openapi.yaml",
+      "specs/a:b.yaml", // a colon after the first segment
+      "/absolute/path.yaml",
+      "//example.com/openapi.yaml",
+      "?query",
+      "#fragment",
+      "a%20b.yaml",
+      "" // the containing document
+    )) {
+      !invalid(value)
+    }
+  }
+
+  ["absolute URIs are accepted"] {
+    for (value in List(
+      "https://example.com/openapi.yaml",
+      "https://user:pass@example.com:8443/a/b?x=1&y=2#/paths/~1pets",
+      "http://[::1]:8080/openapi.yaml",
+      "http://[v1.fe80::a+en1]/openapi.yaml",
+      "http://192.0.2.1/openapi.yaml",
+      "file:///tmp/openapi.yaml",
+      "urn:isbn:0451450523",
+      "mailto:api@example.com",
+      "x:y/../:z"
+    )) {
+      !invalid(value)
+    }
+  }
+
+  ["strings outside the URI-reference grammar are rejected"] {
+    for (value in List(
+      "open api.yaml", // space
+      "openapi.yaml ", // trailing space
+      "%zz.yaml", // malformed percent-encoding
+      "%2.yaml",
+      #"specs\openapi.yaml"#, // backslash
+      "a#b#c", // two fragments
+      "1a:b", // a colon in the first segment of a relative path
+      ":openapi.yaml",
+      "https://exa mple.com/",
+      "http://[zz]/openapi.yaml", // not an IP literal
+      "http://example.com:80a/", // non-numeric port
+      "https://example.com/<x>",
+      "https://example.com/{x}",
+      "a|b",
+      "café.yaml", // non-ASCII must be percent-encoded
+      "line\nbreak"
+    )) {
+      invalid(value)
+    }
+  }
+
+  ["a source description url can be a relative reference"] {
+    // Regression test for https://github.com/makecph/pkl-arazzo/issues/1: Pkl 0.33 made `pkl.base#Uri` accept
+    // absolute URLs only.
+    parser.parse(withUrl("./openapi.yaml").output.text).sourceDescriptions[0].url == "./openapi.yaml"
+    parser.parse(withUrl("../specs/petstore.yaml").output.text).sourceDescriptions[0].url == "../specs/petstore.yaml"
+    parser.parse(withUrl("https://example.com/openapi.yaml").output.text).sourceDescriptions[0].url
+      == "https://example.com/openapi.yaml"
+  }
+
+  ["a source description url must be a URI-reference"] {
+    rejected(withUrl("open api.yaml"))
+    rejected(withUrl("1a:b"))
+  }
+}

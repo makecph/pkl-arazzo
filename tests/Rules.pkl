@@ -69,6 +69,13 @@ facts {
     rejected((minimal) { `$self` = "https://example.com/a.arazzo.yaml#frag" })
   }
 
+  ["$self is a URI-reference"] {
+    !rejected((minimal) { `$self` = "workflows/purchase.arazzo.yaml" })
+    !rejected((minimal) { `$self` = "urn:uuid:6e8bc430-9c3a-11d9-9669-0800200c9a66" })
+    rejected((minimal) { `$self` = "workflows/purchase arazzo.yaml" })
+    rejected((minimal) { `$self` = "workflows/%zz.arazzo.yaml" })
+  }
+
   ["source descriptions can be of type asyncapi"] {
     for (kind in List("arazzo", "openapi", "asyncapi")) {
       !rejected((minimal) { sourceDescriptions { [0] { `type` = kind } } })

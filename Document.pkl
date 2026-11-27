@@ -14,6 +14,7 @@ import "ExpressionType.pkl" as _ExpressionType
 import "FailureAction.pkl" as _FailureAction
 import "Parameter.pkl" as _Parameter
 import "Reusable.pkl" as _Reusable
+import "Rfc3986.pkl" as _Rfc3986
 import "Selector.pkl" as _Selector
 import "SuccessAction.pkl" as _SuccessAction
 
@@ -27,7 +28,7 @@ arazzo: "1.1.0" = "1.1.0"
 /// A URI-reference that identifies this document, used as the base for resolving relative references.
 ///
 /// MUST NOT contain a fragment.
-`$self`: Uri(!contains("#"))?
+`$self`: _Rfc3986.UriReference(!contains("#"))?
 
 /// Provides metadata about the Arazzo description.
 info: Info
@@ -51,6 +52,7 @@ typealias Parameter = _Parameter
 typealias Reusable = _Reusable
 typealias Selector = _Selector
 typealias SuccessAction = _SuccessAction
+typealias UriReference = _Rfc3986.UriReference
 
 output {
   // noinspection TypeMismatch

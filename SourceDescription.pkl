@@ -5,6 +5,7 @@
 module arazzo.SourceDescription
 
 import "Extension.pkl"
+import "Rfc3986.pkl"
 
 /// A unique name for the source description.
 ///
@@ -15,7 +16,7 @@ name: String(matches(Regex(#"[A-Za-z0-9_\-]+"#)))
 /// A URL to a source description to be used by a workflow.
 ///
 /// If a relative reference is used, it MUST be in the format of a URI-reference.
-url: Uri
+url: Rfc3986.UriReference
 
 /// The type of source description.
 type: ("arazzo" | "openapi" | "asyncapi")?
