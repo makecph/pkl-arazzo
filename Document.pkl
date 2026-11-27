@@ -13,6 +13,7 @@ import "Workflow.pkl"
 import "FailureAction.pkl" as _FailureAction
 import "Parameter.pkl" as _Parameter
 import "Reusable.pkl" as _Reusable
+import "Rfc3986.pkl" as _Rfc3986
 import "SuccessAction.pkl" as _SuccessAction
 
 /// This string MUST be the version number of the Arazzo Specification that the Arazzo description uses.
@@ -42,6 +43,7 @@ typealias FailureAction = _FailureAction
 typealias Parameter = _Parameter
 typealias Reusable = _Reusable
 typealias SuccessAction = _SuccessAction
+typealias UriReference = _Rfc3986.UriReference
 
 output {
   // noinspection TypeMismatch

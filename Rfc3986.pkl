@@ -1,0 +1,75 @@
+/// Types for the generic URI syntax of [RFC 3986](https://www.rfc-editor.org/rfc/rfc3986).
+///
+/// Arazzo allows relative references wherever it expects a URI, so the package uses these types instead of
+/// `pkl.base#Uri`, which accepts only absolute URLs from Pkl 0.33 onwards.
+module arazzo.Rfc3986
+
+// The fragments below follow the ABNF of RFC 3986 Appendix A. Each one is a regular expression without capturing
+// groups, so they can be composed freely.
+
+/// `pct-encoded = "%" HEXDIG HEXDIG`
+local const pctEncoded = "%[0-9A-Fa-f]{2}"
+
+/// `unreserved / sub-delims`
+local const unreservedOrSubDelim = #"[A-Za-z0-9\-._~!$&'()*+,;=]"#
+
+/// `pchar = unreserved / pct-encoded / sub-delims / ":" / "@"`
+local const pchar = "(?:\(unreservedOrSubDelim)|[:@]|\(pctEncoded))"
+
+/// `segment = *pchar`
+local const segment = "\(pchar)*"
+
+/// `segment-nz = 1*pchar`
+local const segmentNz = "\(pchar)+"
+
+/// `segment-nz-nc = 1*( unreserved / pct-encoded / sub-delims / "@" )`, a segment without a colon.
+local const segmentNzNc = "(?:\(unreservedOrSubDelim)|@|\(pctEncoded))+"
+
+/// `scheme = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )`
+local const scheme = #"[A-Za-z][A-Za-z0-9+.\-]*"#
+
+/// `userinfo = *( unreserved / pct-encoded / sub-delims / ":" )`
+local const userinfo = "(?:\(unreservedOrSubDelim)|:|\(pctEncoded))*"
+
+/// `IP-literal = "[" ( IPv6address / IPvFuture ) "]"`
+///
+/// IPv6 addresses are checked for their alphabet only, not for the number and placement of groups.
+local const ipLiteral = #"\[(?:[0-9A-Fa-f:.]+|[vV][0-9A-Fa-f]+\.[A-Za-z0-9\-._~!$&'()*+,;=:]+)\]"#
+
+/// `reg-name = *( unreserved / pct-encoded / sub-delims )`, which also covers `IPv4address`.
+local const regName = "(?:\(unreservedOrSubDelim)|\(pctEncoded))*"
+
+/// `authority = [ userinfo "@" ] host [ ":" port ]`
+local const authority = "(?:\(userinfo)@)?(?:\(ipLiteral)|\(regName))(?::[0-9]*)?"
+
+/// `path-abempty = *( "/" segment )`
+local const pathAbEmpty = "(?:/\(segment))*"
+
+/// `path-absolute = "/" [ segment-nz *( "/" segment ) ]`
+local const pathAbsolute = "/(?:\(segmentNz)(?:/\(segment))*)?"
+
+/// `query = *( pchar / "/" / "?" )`, and `fragment`, which has the same grammar.
+local const queryOrFragment = "(?:\(pchar)|[/?])*"
+
+/// `[ "?" query ] [ "#" fragment ]`
+local const queryAndFragment = #"(?:\?"# + queryOrFragment + ")?(?:#\(queryOrFragment))?"
+
+/// `URI = scheme ":" hier-part [ "?" query ] [ "#" fragment ]`, where
+/// `hier-part = "//" authority path-abempty / path-absolute / path-rootless / path-empty`.
+local const uri =
+  "\(scheme):(?://\(authority)\(pathAbEmpty)|\(pathAbsolute)|\(segmentNz)(?:/\(segment))*|)\(queryAndFragment)"
+
+/// `relative-ref = relative-part [ "?" query ] [ "#" fragment ]`, where
+/// `relative-part = "//" authority path-abempty / path-absolute / path-noscheme / path-empty`.
+local const relativeRef =
+  "(?://\(authority)\(pathAbEmpty)|\(pathAbsolute)|\(segmentNzNc)(?:/\(segment))*|)\(queryAndFragment)"
+
+/// `URI-reference = URI / relative-ref`
+local const uriReference = Regex("\(uri)|\(relativeRef)")
+
+/// A URI-reference as defined by [RFC 3986 §4.1](https://www.rfc-editor.org/rfc/rfc3986#section-4.1): either an
+/// absolute URI such as `https://example.com/openapi.yaml`, or a relative reference such as `./openapi.yaml`.
+///
+/// The empty string is a valid relative reference to the containing document. Characters outside the RFC 3986
+/// alphabet, such as spaces or non-ASCII letters, must be percent-encoded.
+typealias UriReference = String(matches(uriReference))
